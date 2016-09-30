@@ -21,6 +21,8 @@ SCOPES = 'https://www.googleapis.com/auth/calendar.readonly'
 CLIENT_SECRET_FILE = 'client_secret.json'
 APPLICATION_NAME = 'Google Calendar API Python Quickstart'
 
+MAX_EVENTS = 1000
+
 def get_credentials():
     """Gets valid user credentials from storage.
 
@@ -60,18 +62,40 @@ def main():
     service = discovery.build('calendar', 'v3', http=http)
 
     now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
-    print('Getting the upcoming 10 events')
-    eventsResult = service.events().list(
-        calendarId='primary', timeMin=now, maxResults=10, singleEvents=True,
-        orderBy='startTime').execute()
-    events = eventsResult.get('items', [])
 
-    if not events:
-        print('No upcoming events found.')
-    for event in events:
-        start = event['start'].get('dateTime', event['start'].get('date'))
-        print(start, event['summary'])
+    calendars = service.calendarList().list(maxResults=200).execute()
+    rooms = []
+    for calendar in calendars['items']:
+        if 'The' in calendar['summary']:
+            print(calendar['summary'], calendar)
+            rooms.append(calendar)
 
+    print(rooms)
+
+    for room in rooms:
+        print('Getting events for', room['summary'])
+        eventsResult = service.events().list(
+            calendarId=room['id'], timeMin=now, maxResults=MAX_EVENTS, singleEvents=True,
+            orderBy='startTime').execute()
+        events = eventsResult.get('items', [])
+
+        for event in events:
+            start = event['start'].get('dateTime', event['start'].get('date'))
+            if 'summary' in event:
+                print(event)
+                print(start, event['creator'], event['summary']) #, event)
+
+    # print('Getting the upcoming 10 events')
+    # eventsResult = service.events().list(
+    #     calendarId='primary', timeMin=now, maxResults=10, singleEvents=True,
+    #     orderBy='startTime').execute()
+    # events = eventsResult.get('items', [])
+
+    # if not events:
+    #     print('No upcoming events found.')
+    # for event in events:
+    #     start = event['start'].get('dateTime', event['start'].get('date'))
+    #     print(start, event['summary'])
 
 if __name__ == '__main__':
     main()
