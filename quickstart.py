@@ -73,13 +73,13 @@ def main():
         events = eventsResult.get('items', [])
 
         for event in events:
-            start = event['start'].get('dateTime', event['start'].get('date'))
-            end  = event['end'].get('dateTime', event['end'].get('date'))
-            summary = event['summary']
-            creator = event['creator']
             if 'summary' in event:
+                start = event['start'].get('dateTime', event['start'].get('date'))
+                end  = event['end'].get('dateTime', event['end'].get('date'))
+                summary = event['summary']
+                creator = event['creator']
                 # print(json.dumps(event, indent=2))
-                print(summary, creator, start, end)
+                print(start, event['creator']['email'], event['summary'], event['start']['dateTime'], event['end']['dateTime'])
 
 if __name__ == '__main__':
     main()
