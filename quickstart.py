@@ -7,7 +7,7 @@ import oauth2client
 from oauth2client import client
 from oauth2client import tools
 
-import datetime
+import datetime, json
 
 try:
     import argparse
@@ -70,8 +70,6 @@ def main():
             print(calendar['summary'], calendar)
             rooms.append(calendar)
 
-    print(rooms)
-
     for room in rooms:
         print('Getting events for', room['summary'])
         eventsResult = service.events().list(
@@ -82,8 +80,8 @@ def main():
         for event in events:
             start = event['start'].get('dateTime', event['start'].get('date'))
             if 'summary' in event:
-                print(event)
-                print(start, event['creator'], event['summary']) #, event)
+                print(json.dumps(event, indent=2))
+                print(start, event['creator']['email'], event['summary'], event['start']['dateTime'], event['end']['dateTime'])
 
     # print('Getting the upcoming 10 events')
     # eventsResult = service.events().list(
