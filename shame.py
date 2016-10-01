@@ -82,15 +82,16 @@ def main():
                 summary = event['summary']
                 creator = event['creator']['email']
                 # print(json.dumps(event, indent=2))
-                print(start, end, room['summary'], creator, summary)
 
                 declined = False
                 if 'attendees' in event:
                     for attendee in event['attendees']:
                         if (attendee.get('resource', False) and
                             attendee['responseStatus'] == 'declined' and
-                            'self' in attendee and attendee['self']):
+                            attendee.get('self', True)):
                                 declined = True
+
+                print("\t".join([start, end, room['summary'], creator, summary, str(declined)]))
 
                 if declined:
                     continue
@@ -103,7 +104,7 @@ def main():
 
                 people_meetings[creator][(start_timestamp, end_timestamp)] = summary + ' @ ' + room['summary']
 
-    print(people_meetings)
+    # print(people_meetings)
 
 if __name__ == '__main__':
     main()
