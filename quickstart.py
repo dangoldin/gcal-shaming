@@ -8,6 +8,7 @@ from oauth2client import client
 from oauth2client import tools
 
 import datetime, json
+import arrow
 
 try:
     import argparse
@@ -65,6 +66,8 @@ def main():
             print(calendar['summary'], calendar)
             rooms.append(calendar)
 
+    people_meetings = {}
+
     for room in rooms:
         print('Getting events for', room['summary'])
         eventsResult = service.events().list(
@@ -77,9 +80,30 @@ def main():
                 start = event['start'].get('dateTime', event['start'].get('date'))
                 end  = event['end'].get('dateTime', event['end'].get('date'))
                 summary = event['summary']
-                creator = event['creator']
+                creator = event['creator']['email']
                 # print(json.dumps(event, indent=2))
-                print(start, event['creator']['email'], event['summary'], event['start']['dateTime'], event['end']['dateTime'])
+                print(start, end, room['summary'], creator, summary)
+
+                declined = False
+                if 'attendees' in event:
+                    for attendee in event['attendees']:
+                        if (attendee.get('resource', False) and
+                            attendee['responseStatus'] == 'declined' and
+                            'self' in attendee and attendee['self']):
+                                declined = True
+
+                if declined:
+                    continue
+
+                start_timestamp = arrow.get(start).timestamp
+                end_timestamp = arrow.get(end).timestamp
+
+                if creator not in people_meetings:
+                    people_meetings[creator] = {}
+
+                people_meetings[creator][(start_timestamp, end_timestamp)] = summary + ' @ ' + room['summary']
+
+    print(people_meetings)
 
 if __name__ == '__main__':
     main()
