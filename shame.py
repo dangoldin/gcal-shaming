@@ -59,9 +59,11 @@ def main():
 
     now = datetime.datetime.utcnow().isoformat() + 'Z'
 
+    # Make sure to get everyone
     calendars = service.calendarList().list(maxResults=200).execute()
     rooms = []
     for calendar in calendars['items']:
+        # All our rooms start with 'The' so this needs to be cleaned up
         if 'The' in calendar['summary']:
             print(calendar['summary'], calendar)
             rooms.append(calendar)
@@ -75,6 +77,7 @@ def main():
             orderBy='startTime').execute()
         events = eventsResult.get('items', [])
 
+        # TODO: Clean up loops, better file writing
         for event in events:
             if 'summary' in event:
                 start = event['start'].get('dateTime', event['start'].get('date'))
@@ -102,6 +105,7 @@ def main():
                 if creator not in people_meetings:
                     people_meetings[creator] = {}
 
+                # TODO: Handle ranges, use a range set
                 if (start_timestamp, end_timestamp) in people_meetings[creator]:
                     people_meetings[creator][(start_timestamp, end_timestamp)].append(summary + ' @ ' + room['summary'])
                     print('Found duplicate', creator, start, end, ':', ', '.join(people_meetings[creator][(start_timestamp, end_timestamp)]))
