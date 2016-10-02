@@ -91,10 +91,10 @@ def main():
                             attendee.get('self', True)):
                                 declined = True
 
-                print("\t".join([start, end, room['summary'], creator, summary, str(declined)]))
-
                 if declined:
                     continue
+
+                # print("\t".join([start, end, room['summary'], creator, summary]))
 
                 start_timestamp = arrow.get(start).timestamp
                 end_timestamp = arrow.get(end).timestamp
@@ -102,7 +102,11 @@ def main():
                 if creator not in people_meetings:
                     people_meetings[creator] = {}
 
-                people_meetings[creator][(start_timestamp, end_timestamp)] = summary + ' @ ' + room['summary']
+                if (start_timestamp, end_timestamp) in people_meetings[creator]:
+                    people_meetings[creator][(start_timestamp, end_timestamp)].append(summary + ' @ ' + room['summary'])
+                    print('Found duplicate', creator, start, end, ':', ', '.join(people_meetings[creator][(start_timestamp, end_timestamp)]))
+                else:
+                    people_meetings[creator][(start_timestamp, end_timestamp)] = [summary + ' @ ' + room['summary']]
 
     # print(people_meetings)
 
