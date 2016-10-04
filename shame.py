@@ -9,6 +9,7 @@ from oauth2client import tools
 
 import datetime, json
 import arrow
+from rangeset import RangeSet
 
 try:
     import argparse
@@ -70,6 +71,8 @@ def main():
 
     people_meetings = {}
 
+    people_ranges = {}
+
     for room in rooms:
         print('Getting events for', room['summary'])
         eventsResult = service.events().list(
@@ -105,6 +108,11 @@ def main():
                 if creator not in people_meetings:
                     people_meetings[creator] = {}
 
+                if creator not in people_ranges:
+                    people_ranges[creator] = RangeSet(start_timestamp, end_timestamp)
+                else:
+                    people_ranges[creator] |= RangeSet(start_timestamp, end_timestamp)
+
                 # TODO: Handle ranges, use a range set
                 if (start_timestamp, end_timestamp) in people_meetings[creator]:
                     people_meetings[creator][(start_timestamp, end_timestamp)].append(summary + ' @ ' + room['summary'])
@@ -112,6 +120,7 @@ def main():
                 else:
                     people_meetings[creator][(start_timestamp, end_timestamp)] = [summary + ' @ ' + room['summary']]
 
+    print(people_ranges)
     # print(people_meetings)
 
 if __name__ == '__main__':
