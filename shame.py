@@ -11,6 +11,10 @@ import datetime, json
 import arrow
 from rangeset import RangeSet
 
+# Rnage set docs
+# http://axiak.github.io/py-rangeset/
+# https://github.com/axiak/py-rangeset
+
 try:
     import argparse
     flags = argparse.ArgumentParser(parents=[tools.argparser]).parse_args()
@@ -108,10 +112,14 @@ def main():
                 if creator not in people_meetings:
                     people_meetings[creator] = {}
 
+                this_range = RangeSet(start_timestamp, end_timestamp)
+
                 if creator not in people_ranges:
-                    people_ranges[creator] = RangeSet(start_timestamp, end_timestamp)
+                    people_ranges[creator] = this_range
                 else:
-                    people_ranges[creator] |= RangeSet(start_timestamp, end_timestamp)
+                    if len(this_range & people_ranges[creator]):
+                        print('Overlap meeting for',creator,summary,room['summary'],start,end)
+                    people_ranges[creator] |= this_range
 
                 # TODO: Handle ranges, use a range set
                 if (start_timestamp, end_timestamp) in people_meetings[creator]:
@@ -120,7 +128,7 @@ def main():
                 else:
                     people_meetings[creator][(start_timestamp, end_timestamp)] = [summary + ' @ ' + room['summary']]
 
-    print(people_ranges)
+    # print(people_ranges)
     # print(people_meetings)
 
 if __name__ == '__main__':
