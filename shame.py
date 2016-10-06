@@ -11,10 +11,6 @@ import datetime, json
 import arrow
 from rangeset import RangeSet
 
-# Rnage set docs
-# http://axiak.github.io/py-rangeset/
-# https://github.com/axiak/py-rangeset
-
 try:
     import argparse
     flags = argparse.ArgumentParser(parents=[tools.argparser]).parse_args()
@@ -74,7 +70,6 @@ def main():
             rooms.append(calendar)
 
     people_meetings = {}
-
     people_ranges = {}
 
     for room in rooms:
@@ -121,7 +116,6 @@ def main():
                         print('Overlap meeting for',creator,summary,room['summary'],start,end)
                     people_ranges[creator] |= this_range
 
-                # TODO: Handle ranges, use a range set
                 if (start_timestamp, end_timestamp) in people_meetings[creator]:
                     people_meetings[creator][(start_timestamp, end_timestamp)].append(summary + ' @ ' + room['summary'])
                     print('Found duplicate', creator, start, end, ':', ', '.join(people_meetings[creator][(start_timestamp, end_timestamp)]))
