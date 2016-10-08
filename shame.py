@@ -10,6 +10,7 @@ from oauth2client import tools
 import datetime, json
 import arrow
 from rangeset import RangeSet
+from collections import namedtuple
 
 try:
     import argparse
@@ -24,6 +25,8 @@ CLIENT_SECRET_FILE = 'client_secret.json'
 APPLICATION_NAME = 'Google Calendar API Python Quickstart'
 
 MAX_EVENTS = 1000
+
+Event = namedtuple('Event', ['start', 'end', 'summary', 'creator', 'declined', 'start_timestamp', 'end_timestamp'], verbose=False)
 
 def get_credentials():
     """Gets valid user credentials from storage.
@@ -53,6 +56,28 @@ def get_credentials():
         print('Storing credentials to ' + credential_path)
     return credentials
 
+def parse_event(event):
+    if 'summary' in event:
+        start = event['start'].get('dateTime', event['start'].get('date'))
+        end  = event['end'].get('dateTime', event['end'].get('date'))
+        summary = event['summary']
+        creator = event['creator']['email']
+        # print(json.dumps(event, indent=2))
+
+        start_timestamp = arrow.get(start).timestamp
+        end_timestamp = arrow.get(end).timestamp
+
+        declined = False
+        if 'attendees' in event:
+            for attendee in event['attendees']:
+                if (attendee.get('resource', False) and
+                    attendee['responseStatus'] == 'declined' and
+                    attendee.get('self', True)):
+                        declined = True
+
+        return Event(start, end, summary, creator, declined, start_timestamp, end_timestamp)
+    return None
+
 def main():
     credentials = get_credentials()
     http = credentials.authorize(httplib2.Http())
@@ -69,7 +94,6 @@ def main():
             print(calendar['summary'], calendar)
             rooms.append(calendar)
 
-    people_meetings = {}
     people_ranges = {}
 
     for room in rooms:
@@ -81,49 +105,19 @@ def main():
 
         # TODO: Clean up loops, better file writing
         for event in events:
-            if 'summary' in event:
-                start = event['start'].get('dateTime', event['start'].get('date'))
-                end  = event['end'].get('dateTime', event['end'].get('date'))
-                summary = event['summary']
-                creator = event['creator']['email']
-                # print(json.dumps(event, indent=2))
+            details = parse_event(event)
 
-                declined = False
-                if 'attendees' in event:
-                    for attendee in event['attendees']:
-                        if (attendee.get('resource', False) and
-                            attendee['responseStatus'] == 'declined' and
-                            attendee.get('self', True)):
-                                declined = True
+            if not details:
+                continue
 
-                if declined:
-                    continue
+            this_range = RangeSet(details.start_timestamp, details.end_timestamp)
 
-                # print("\t".join([start, end, room['summary'], creator, summary]))
-
-                start_timestamp = arrow.get(start).timestamp
-                end_timestamp = arrow.get(end).timestamp
-
-                if creator not in people_meetings:
-                    people_meetings[creator] = {}
-
-                this_range = RangeSet(start_timestamp, end_timestamp)
-
-                if creator not in people_ranges:
-                    people_ranges[creator] = this_range
-                else:
-                    if len(this_range & people_ranges[creator]):
-                        print('Overlap meeting for',creator,summary,room['summary'],start,end)
-                    people_ranges[creator] |= this_range
-
-                if (start_timestamp, end_timestamp) in people_meetings[creator]:
-                    people_meetings[creator][(start_timestamp, end_timestamp)].append(summary + ' @ ' + room['summary'])
-                    print('Found duplicate', creator, start, end, ':', ', '.join(people_meetings[creator][(start_timestamp, end_timestamp)]))
-                else:
-                    people_meetings[creator][(start_timestamp, end_timestamp)] = [summary + ' @ ' + room['summary']]
-
-    # print(people_ranges)
-    # print(people_meetings)
+            if details.creator not in people_ranges:
+                people_ranges[details.creator] = this_range
+            else:
+                if len(this_range & people_ranges[details.creator]):
+                    print('Overlap meeting for',details)
+                people_ranges[details.creator] |= this_range
 
 if __name__ == '__main__':
     main()
