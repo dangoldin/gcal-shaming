@@ -93,3 +93,4 @@ ENV/
 
 # Secret files
 client*json
+*csv

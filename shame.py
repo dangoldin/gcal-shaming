@@ -1,6 +1,8 @@
 from __future__ import print_function
 import httplib2
 import os
+import sys
+import csv
 
 from apiclient import discovery
 import oauth2client
@@ -11,12 +13,6 @@ import datetime, json
 import arrow
 from rangeset import RangeSet
 from collections import namedtuple
-
-try:
-    import argparse
-    flags = argparse.ArgumentParser(parents=[tools.argparser]).parse_args()
-except ImportError:
-    flags = None
 
 # If modifying these scopes, delete your previously saved credentials
 # at ~/.credentials/calendar-python-quickstart.json
@@ -62,7 +58,6 @@ def parse_event(event):
         end  = event['end'].get('dateTime', event['end'].get('date'))
         summary = event['summary']
         creator = event['creator']['email']
-        # print(json.dumps(event, indent=2))
 
         start_timestamp = arrow.get(start).timestamp
         end_timestamp = arrow.get(end).timestamp
@@ -78,7 +73,7 @@ def parse_event(event):
         return Event(start, end, summary, creator, declined, start_timestamp, end_timestamp)
     return None
 
-def main():
+def main(outfile):
     credentials = get_credentials()
     http = credentials.authorize(httplib2.Http())
     service = discovery.build('calendar', 'v3', http=http)
@@ -96,6 +91,7 @@ def main():
 
     people_ranges = {}
 
+    all_events = []
     for room in rooms:
         print('Getting events for', room['summary'])
         eventsResult = service.events().list(
@@ -103,7 +99,6 @@ def main():
             orderBy='startTime').execute()
         events = eventsResult.get('items', [])
 
-        # TODO: Clean up loops, better file writing
         for event in events:
             details = parse_event(event)
 
@@ -112,12 +107,25 @@ def main():
 
             this_range = RangeSet(details.start_timestamp, details.end_timestamp)
 
+            has_overlap = False
             if details.creator not in people_ranges:
                 people_ranges[details.creator] = this_range
             else:
                 if len(this_range & people_ranges[details.creator]):
                     print('Overlap meeting for',details)
+                    has_overlap = True
                 people_ranges[details.creator] |= this_range
+            all_events.append((details, has_overlap))
+
+    if outfile:
+        with open(outfile, 'w') as f:
+            w = csv.writer(f)
+            w.writerow(('start', 'end', 'summary', 'creator', 'declined', 'start_timestamp', 'end_timestamp', 'has_overlap'))
+            w.writerows([(e.start, e.end, e.summary, e.creator, e.declined, e.start_timestamp, e.end_timestamp, has_overlap) for e, has_overlap in all_events])
 
 if __name__ == '__main__':
-    main()
+    outfile = None
+    if len(sys.argv) > 1:
+        outfile = sys.argv[1]
+
+    main(outfile)
