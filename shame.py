@@ -73,7 +73,10 @@ def parse_event(event):
         return Event(start, end, summary, creator, declined, start_timestamp, end_timestamp)
     return None
 
-def main(outfile):
+def main(outfile, search_term = None):
+    if search_term:
+        search_term = search_term.lower()
+
     credentials = get_credentials()
     http = credentials.authorize(httplib2.Http())
     service = discovery.build('calendar', 'v3', http=http)
@@ -105,6 +108,9 @@ def main(outfile):
             if not details:
                 continue
 
+            if search_term and search_term in details.summary.lower():
+                print('Event found matching search term: ' + details.summary + ' ' + str(details))
+
             this_range = RangeSet(details.start_timestamp, details.end_timestamp)
 
             has_overlap = False
@@ -125,7 +131,13 @@ def main(outfile):
 
 if __name__ == '__main__':
     outfile = None
+    search_term = None
     if len(sys.argv) > 1:
         outfile = sys.argv[1]
+        if len(sys.argv) > 2:
+            search_term = sys.argv[2]
+    else:
+        print('Please specify outfile')
+        exit(1)
 
-    main(outfile)
+    main(outfile, search_term)
