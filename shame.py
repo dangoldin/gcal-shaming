@@ -22,7 +22,7 @@ APPLICATION_NAME = 'Google Calendar Meeting Room Shaming'
 
 MAX_EVENTS = 1000
 
-Event = namedtuple('Event', ['start', 'end', 'summary', 'creator', 'declined', 'start_timestamp', 'end_timestamp'], verbose=False)
+Event = namedtuple('Event', ['start', 'end', 'summary', 'creator', 'declined', 'start_timestamp', 'end_timestamp', 'attendees'], verbose=False)
 
 def get_credentials():
     """Gets valid user credentials from storage.
@@ -63,14 +63,21 @@ def parse_event(event):
         end_timestamp = arrow.get(end).timestamp
 
         declined = False
+        attendees = []
         if 'attendees' in event:
             for attendee in event['attendees']:
                 if (attendee.get('resource', False) and
                     attendee['responseStatus'] == 'declined' and
                     attendee.get('self', True)):
                         declined = True
+                if 'resource' not in attendee and attendee['responseStatus'] in ('tentative', 'accepted'):
+                    attendees.append(attendee['email'])
 
-        return Event(start, end, summary, creator, declined, start_timestamp, end_timestamp)
+        # if len(attendees) > 10:
+        #     print(json.dumps(event, indent=2))
+        #     exit()
+
+        return Event(start, end, summary, creator, declined, start_timestamp, end_timestamp, attendees)
     return None
 
 def main(outfile, search_term = None):
@@ -126,8 +133,8 @@ def main(outfile, search_term = None):
     if outfile:
         with open(outfile, 'w') as f:
             w = csv.writer(f)
-            w.writerow(('start', 'end', 'summary', 'creator', 'declined', 'start_timestamp', 'end_timestamp', 'has_overlap'))
-            w.writerows([(e.start, e.end, e.summary, e.creator, e.declined, e.start_timestamp, e.end_timestamp, has_overlap) for e, has_overlap in all_events])
+            w.writerow(('start', 'end', 'summary', 'creator', 'declined', 'start_timestamp', 'end_timestamp', 'has_overlap', 'attendees'))
+            w.writerows([(e.start, e.end, e.summary, e.creator, e.declined, e.start_timestamp, e.end_timestamp, has_overlap, '|'.join(e.attendees)) for e, has_overlap in all_events])
 
 if __name__ == '__main__':
     outfile = None
