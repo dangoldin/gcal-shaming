@@ -104,8 +104,10 @@ def main(outfile):
             print(calendar['summary'], calendar)
             rooms.append(calendar)
 
+    print('Found rooms: ', ', '.join(cal['summary'] for cal in rooms))
+
     all_events = []
-    for room in rooms[:1]:
+    for room in rooms:
         print('Getting events for', room['summary'])
         events_result = service.events().list(
             calendarId=room['id'], timeMin=now, maxResults=MAX_EVENTS, singleEvents=True,
