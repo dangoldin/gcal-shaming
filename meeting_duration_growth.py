@@ -11,6 +11,7 @@ from oauth2client import tools
 
 import datetime, json
 import arrow
+from dateutil import tz
 from rangeset import RangeSet
 from collections import namedtuple
 
@@ -24,9 +25,11 @@ except ImportError:
 # at ~/.credentials/calendar-python-quickstart.json
 SCOPES = 'https://www.googleapis.com/auth/calendar.readonly'
 CLIENT_SECRET_FILE = 'client_secret.json'
-APPLICATION_NAME = 'Google Calendar Meeting Room Shaming'
+APPLICATION_NAME = 'Google Calendar Fun'
 
 MAX_EVENTS = 1000
+DAYS_BACK = 7 * 24 # 24 weeks
+SECONDS_IN_DAY = 60 * 60 * 24
 
 Event = namedtuple('Event', ['start', 'end', 'summary', 'creator', 'declined', 'start_timestamp', 'end_timestamp', 'attendees'], verbose=False)
 
@@ -62,7 +65,7 @@ def parse_event(event):
     if 'summary' in event:
         start = event['start'].get('dateTime', event['start'].get('date'))
         end = event['end'].get('dateTime', event['end'].get('date'))
-        summary = event['summary']
+        summary = event['summary'].encode('utf-8')
         creator = event['creator']['email']
 
         start_timestamp = arrow.get(start).timestamp
@@ -80,10 +83,6 @@ def parse_event(event):
                     attendee['responseStatus'] in ('tentative', 'accepted'):
                     attendees.append(attendee['email'])
 
-        # if len(attendees) > 10:
-        #     print(json.dumps(event, indent=2))
-        #     exit()
-
         return Event(start, end, summary, creator, declined,
             start_timestamp, end_timestamp, attendees)
     return None
@@ -92,40 +91,40 @@ def main(outfile):
     credentials = get_credentials()
     http = credentials.authorize(httplib2.Http())
     service = discovery.build('calendar', 'v3', http=http)
-
-    now = datetime.datetime.utcnow().isoformat() + 'Z'
-
-    # Make sure to get everyone
-    calendars = service.calendarList().list(maxResults=200).execute()
-    rooms = []
-    for calendar in calendars['items']:
-        print(calendar['summary'])
-        # All our rooms start with 'The' so this needs to be cleaned up
-        if 'The' in calendar['summary']:
-            print(calendar['summary'], calendar)
-            rooms.append(calendar)
-
-    print('Found rooms: ', ', '.join(cal['summary'] for cal in rooms))
-
-    processed_events = set()
     all_events = []
-    for room in rooms:
-        print('Getting events for', room['summary'])
-        events_result = service.events().list(
-            calendarId=room['id'], timeMin=now, maxResults=MAX_EVENTS, singleEvents=True,
-            orderBy='startTime').execute()
-        events = events_result.get('items', [])
-        all_events.extend([parse_event(e) for e in events if e.summary not in processed_events])
-        processed_events = processed_events.union(e.summary for e in events)
 
-    print(json.dumps(all_events, indent=2))
+    start_month = '2013-10-01'
+    curr_datetime = arrow.get(start_month)
 
-    if outfile:
-        with open(outfile, 'w') as f:
-            writer = csv.writer(f)
-            writer.writerow(('start', 'end', 'summary', 'creator', 'attendees'))
-            writer.writerows([(e.start, e.end, e.summary, e.creator, '|'.join(e.attendees)) \
-                for e in all_events if e is not None])
+    while curr_datetime < arrow.now():
+        end_datetime = curr_datetime.shift(months=1)
+        start_ts = curr_datetime.format('YYYY-MM-DDTHH:mm:ss') + 'Z'
+        end_ts = end_datetime.format('YYYY-MM-DDTHH:mm:ss') + 'Z'
+
+        curr_datetime = end_datetime
+
+        print('Getting events', start_ts, 'to', end_ts)
+        try:
+            # Docs: https://developers.google.com/google-apps/calendar/v3/reference/events/list
+            events_result = service.events().list(
+                calendarId='dgoldin@triplelift.com',
+                timeMin=start_ts,
+                timeMax=end_ts,
+                maxResults=MAX_EVENTS, singleEvents=True,
+                orderBy='startTime').execute()
+            events = [parse_event(e) for e in events_result.get('items', []) if parse_event(e) is not None]
+            all_events.extend(events)
+        except Exception, e:
+            print('\tFailed to get events', e)
+
+    with open(outfile, 'w') as f:
+        writer = csv.writer(f)
+        writer.writerow(('start', 'end', 'duration_hours', 'summary', 'creator', 'attendees'))
+        writer.writerows([(e.start, e.end, \
+            (arrow.get(e.end) - arrow.get(e.start)).total_seconds()/(60.0 * 60.0), \
+            e.summary, e.creator, '|'.join(e.attendees)) \
+              for e in all_events if e is not None])
 
 if __name__ == '__main__':
-    main('out.csv')
+    out = 'all-meetings.csv'
+    main(out)
