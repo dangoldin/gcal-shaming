@@ -21,6 +21,8 @@ try:
 except ImportError:
     flags = None
 
+import settings
+
 # If modifying these scopes, delete your previously saved credentials
 # at ~/.credentials/calendar-python-quickstart.json
 SCOPES = 'https://www.googleapis.com/auth/calendar.readonly'
@@ -91,39 +93,41 @@ def main(outfile):
     credentials = get_credentials()
     http = credentials.authorize(httplib2.Http())
     service = discovery.build('calendar', 'v3', http=http)
-    all_events = []
 
-    start_month = '2013-10-01'
-    curr_datetime = arrow.get(start_month)
+    for user in settings.ALL_USERS:
+        print('Retrieving calendar for', user)
+        all_events = []
+        start_month = '2013-10-01'
+        curr_datetime = arrow.get(start_month)
 
-    while curr_datetime < arrow.now():
-        end_datetime = curr_datetime.shift(months=1)
-        start_ts = curr_datetime.format('YYYY-MM-DDTHH:mm:ss') + 'Z'
-        end_ts = end_datetime.format('YYYY-MM-DDTHH:mm:ss') + 'Z'
+        while curr_datetime < arrow.now():
+            end_datetime = curr_datetime.shift(months=1)
+            start_ts = curr_datetime.format('YYYY-MM-DDTHH:mm:ss') + 'Z'
+            end_ts = end_datetime.format('YYYY-MM-DDTHH:mm:ss') + 'Z'
 
-        curr_datetime = end_datetime
+            curr_datetime = end_datetime
 
-        print('Getting events', start_ts, 'to', end_ts)
-        try:
-            # Docs: https://developers.google.com/google-apps/calendar/v3/reference/events/list
-            events_result = service.events().list(
-                calendarId='dgoldin@triplelift.com',
-                timeMin=start_ts,
-                timeMax=end_ts,
-                maxResults=MAX_EVENTS, singleEvents=True,
-                orderBy='startTime').execute()
-            events = [parse_event(e) for e in events_result.get('items', []) if parse_event(e) is not None]
-            all_events.extend(events)
-        except Exception, e:
-            print('\tFailed to get events', e)
+            print('Getting events', start_ts, 'to', end_ts)
+            try:
+                # Docs: https://developers.google.com/google-apps/calendar/v3/reference/events/list
+                events_result = service.events().list(
+                    calendarId=user,
+                    timeMin=start_ts,
+                    timeMax=end_ts,
+                    maxResults=MAX_EVENTS, singleEvents=True,
+                    orderBy='startTime').execute()
+                events = [parse_event(e) for e in events_result.get('items', []) if parse_event(e) is not None]
+                all_events.extend(events)
+            except Exception, e:
+                print('\tFailed to get events', e)
 
-    with open(outfile, 'w') as f:
-        writer = csv.writer(f)
-        writer.writerow(('start', 'end', 'duration_hours', 'summary', 'creator', 'attendees'))
-        writer.writerows([(e.start, e.end, \
-            (arrow.get(e.end) - arrow.get(e.start)).total_seconds()/(60.0 * 60.0), \
-            e.summary, e.creator, '|'.join(e.attendees)) \
-              for e in all_events if e is not None])
+        with open(outfile.replace('.csv', '-' + user.split('@')[0] + '.csv'), 'w') as f:
+            writer = csv.writer(f)
+            writer.writerow(('start', 'end', 'duration_hours', 'summary', 'creator', 'attendees'))
+            writer.writerows([(e.start, e.end, \
+                (arrow.get(e.end) - arrow.get(e.start)).total_seconds()/(60.0 * 60.0), \
+                e.summary, e.creator, '|'.join(e.attendees)) \
+                for e in all_events if e is not None])
 
 if __name__ == '__main__':
     out = 'all-meetings.csv'
