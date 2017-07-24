@@ -94,3 +94,4 @@ ENV/
 # Secret files
 client*json
 *csv
+settings.py
