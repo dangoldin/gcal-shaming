@@ -35,10 +35,11 @@ def analyze(events):
         total_hours += float(e.duration_hours)
     if len(events):
         print(events[0].user)
-        print("\t", total_hours/len(by_month))
-        # print("\t", by_month)
+        print("\tAverage hours per month:", format(total_hours/len(by_month), '.2f'))
+        print("\tTotal hours by month:")
+        for month in sorted(by_month.keys()):
+            print("\t", month, format(by_month[month], '.2f'))
         print("\n")
-
 
 if __name__ == '__main__':
     file_dir = sys.argv[1]
