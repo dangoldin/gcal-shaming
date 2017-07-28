@@ -28,17 +28,36 @@ def filter(events):
 
 def analyze(events):
     total_hours = 0.0
-    by_month = defaultdict(float)
+    by_month_hours = defaultdict(float)
+    by_month_attendees = defaultdict(int)
+    by_month_events = defaultdict(int)
     for e in events:
         month = e.start[:7]
-        by_month[month] += float(e.duration_hours)
-        total_hours += float(e.duration_hours)
+        duration_hours = float(e.duration_hours)
+        total_hours += duration_hours
+        by_month_hours[month] += duration_hours
+        by_month_events[month] += 1
+        if len(e.attendees):
+            by_month_attendees[month] += len(e.attendees.split('|'))
     if len(events):
         print(events[0].user)
-        print("\tAverage hours per month:", format(total_hours/len(by_month), '.2f'))
+        print("\tAverage hours per month:", format(total_hours/len(by_month_hours), '.2f'))
+
         print("\tTotal hours by month:")
-        for month in sorted(by_month.keys()):
-            print("\t", month, format(by_month[month], '.2f'))
+        for month in sorted(by_month_hours.keys()):
+            print("\t", month, format(by_month_hours[month], '.2f'))
+
+        print("\tMeetings per month:")
+        for month in sorted(by_month_events.keys()):
+            print("\t", month, by_month_events[month])
+
+        print("\tAttendees per meeting per month:")
+        for month in sorted(by_month_events.keys()):
+            num_attendees = by_month_attendees[month]
+            meetings = by_month_events[month]
+            if num_attendees > 0:
+                print("\t", month, format(1.0 * num_attendees/meetings, '.2f'))
+
         print("\n")
 
 if __name__ == '__main__':
