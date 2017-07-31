@@ -26,7 +26,7 @@ def filter(events):
     filtered_events = [e for e in events if float(e.duration_hours) < 24 and len(e.attendees) > 0]
     return filtered_events
 
-def analyze(events):
+def analyze(events, username = None):
     total_hours = 0.0
     by_month_hours = defaultdict(float)
     by_month_attendees = defaultdict(int)
@@ -40,7 +40,9 @@ def analyze(events):
         if len(e.attendees):
             by_month_attendees[month] += len(e.attendees.split('|'))
     if len(events):
-        print(events[0].user)
+        if username is None:
+            username = events[0].user
+        print(username)
         print("\tAverage hours per month:", format(total_hours/len(by_month_hours), '.2f'))
 
         print("\tTotal hours by month:")
@@ -63,7 +65,10 @@ def analyze(events):
 if __name__ == '__main__':
     file_dir = sys.argv[1]
     all_files = get_files(file_dir)
+    all_events = []
     for file in all_files:
         events = read_file(os.path.join(file_dir, file))
         filtered_events = filter(events)
         analyze(filtered_events)
+        all_events.extend(events)
+    analyze(all_events, 'All')
