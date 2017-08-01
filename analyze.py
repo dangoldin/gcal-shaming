@@ -12,25 +12,23 @@ def get_files(file_dir):
 
 def read_file(file):
     user = file.split('-')[-1].replace('.csv', '')
-    events = []
     with open(file, 'r') as f:
         c = csv.reader(f)
         c.next() # Skip header
-        for row in c:
-            e = Event(user, *row)
-            events.append(e)
-    return events
+        return [Event(user, *row) for row in c]
+    print('Failed to retrieve events from', file)
+    return []
 
 def filter(events):
-    # Remove events > 24 hours and no attendees
-    filtered_events = [e for e in events if float(e.duration_hours) < 24 and len(e.attendees) > 0]
-    return filtered_events
+    # Remove events > 24 hours (vacations) and no attendees (todos)
+    return [e for e in events if float(e.duration_hours) < 24 and len(e.attendees) > 0]
 
 def analyze(events, username = None):
     total_hours = 0.0
     by_month_hours = defaultdict(float)
     by_month_attendees = defaultdict(int)
     by_month_events = defaultdict(int)
+
     for e in events:
         month = e.start[:7]
         duration_hours = float(e.duration_hours)
@@ -39,6 +37,7 @@ def analyze(events, username = None):
         by_month_events[month] += 1
         if len(e.attendees):
             by_month_attendees[month] += len(e.attendees.split('|'))
+
     if len(events):
         if username is None:
             username = events[0].user
